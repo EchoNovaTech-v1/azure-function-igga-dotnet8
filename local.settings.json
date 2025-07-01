@@ -1,0 +1,29 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
+    "SqlConnectionString": "Server=(localdb)\\mssqllocaldb;Database=IggaDatabase;Trusted_Connection=true;MultipleActiveResultSets=true",
+    "APPINSIGHTS_INSTRUMENTATIONKEY": "",
+    "KeyVaultUrl": "https://your-keyvault.vault.azure.net/",
+    "AZURE_CLIENT_ID": "",
+    "AZURE_CLIENT_SECRET": "",
+    "AZURE_TENANT_ID": "",
+    "StorageAccountConnectionString": "UseDevelopmentStorage=true",
+    "ServiceBusConnectionString": "",
+    "CosmosDbConnectionString": "",
+    "RedisConnectionString": "",
+    "ApiKey": "your-api-key-here",
+    "JwtSecretKey": "your-jwt-secret-key-here",
+    "EmailServiceUrl": "https://your-email-service.com",
+    "NotificationHubConnectionString": "",
+    "BlobStorageContainerName": "igga-files",
+    "QueueName": "igga-queue",
+    "LogLevel": "Information"
+  },
+  "Host": {
+    "LocalHttpPort": 7071,
+    "CORS": "*",
+    "CORSCredentials": false
+  }
+}
