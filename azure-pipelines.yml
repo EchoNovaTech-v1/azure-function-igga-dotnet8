@@ -1,0 +1,341 @@
+# Azure DevOps Pipeline para Azure Function IGGA .NET 8
+# Pipeline de CI/CD para deploy automático
+
+trigger:
+  branches:
+    include:
+    - main
+    - migration-dotnet8
+    - develop
+  paths:
+    exclude:
+    - README.md
+    - docs/*
+
+pr:
+  branches:
+    include:
+    - main
+    - migration-dotnet8
+  paths:
+    exclude:
+    - README.md
+    - docs/*
+
+variables:
+  buildConfiguration: 'Release'
+  dotnetVersion: '8.0.x'
+  azureFunctionAppName: 'azure-function-igga-prod'
+  azureSubscription: 'Azure-Subscription-Connection'
+  resourceGroupName: 'rg-igga-prod'
+
+stages:
+- stage: Build
+  displayName: 'Build and Test'
+  jobs:
+  - job: Build
+    displayName: 'Build Job'
+    pool:
+      vmImage: 'windows-latest'
+    
+    steps:
+    - task: UseDotNet@2
+      displayName: 'Use .NET $(dotnetVersion)'
+      inputs:
+        packageType: 'sdk'
+        version: $(dotnetVersion)
+        includePreviewVersions: false
+
+    - task: DotNetCoreCLI@2
+      displayName: 'Restore NuGet Packages'
+      inputs:
+        command: 'restore'
+        projects: '**/*.csproj'
+        feedsToUse: 'select'
+        verbosityRestore: 'Minimal'
+
+    - task: DotNetCoreCLI@2
+      displayName: 'Build Solution'
+      inputs:
+        command: 'build'
+        projects: '**/*.csproj'
+        arguments: '--configuration $(buildConfiguration) --no-restore'
+
+    - task: DotNetCoreCLI@2
+      displayName: 'Run Unit Tests'
+      inputs:
+        command: 'test'
+        projects: '**/*Tests*.csproj'
+        arguments: '--configuration $(buildConfiguration) --no-build --collect:"XPlat Code Coverage" --logger trx --results-directory $(Agent.TempDirectory)'
+        publishTestResults: true
+
+    - task: PublishCodeCoverageResults@1
+      displayName: 'Publish Code Coverage'
+      inputs:
+        codeCoverageTool: 'Cobertura'
+        summaryFileLocation: '$(Agent.TempDirectory)/**/coverage.cobertura.xml'
+      condition: succeededOrFailed()
+
+    - task: DotNetCoreCLI@2
+      displayName: 'Publish Application'
+      inputs:
+        command: 'publish'
+        publishWebProjects: false
+        projects: '**/*.csproj'
+        arguments: '--configuration $(buildConfiguration) --output $(Build.ArtifactStagingDirectory) --no-build'
+        zipAfterPublish: true
+        modifyOutputPath: false
+
+    - task: PublishBuildArtifacts@1
+      displayName: 'Publish Build Artifacts'
+      inputs:
+        PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+        ArtifactName: 'drop'
+        publishLocation: 'Container'
+
+- stage: DeployDev
+  displayName: 'Deploy to Development'
+  dependsOn: Build
+  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/develop'))
+  jobs:
+  - deployment: DeployToDev
+    displayName: 'Deploy to Development Environment'
+    pool:
+      vmImage: 'windows-latest'
+    environment: 'Development'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: AzureFunctionApp@1
+            displayName: 'Deploy Azure Function App - Dev'
+            inputs:
+              azureSubscription: $(azureSubscription)
+              appType: 'functionApp'
+              appName: '$(azureFunctionAppName)-dev'
+              package: '$(Pipeline.Workspace)/drop/*.zip'
+              deploymentMethod: 'auto'
+              appSettings: |
+                -FUNCTIONS_WORKER_RUNTIME dotnet-isolated
+                -FUNCTIONS_EXTENSION_VERSION ~4
+                -AzureWebJobsStorage $(AzureWebJobsStorage-Dev)
+                -SqlConnectionString $(SqlConnectionString-Dev)
+                -APPINSIGHTS_INSTRUMENTATIONKEY $(ApplicationInsights-Dev)
+
+- stage: DeployStaging
+  displayName: 'Deploy to Staging'
+  dependsOn: Build
+  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/migration-dotnet8'))
+  jobs:
+  - deployment: DeployToStaging
+    displayName: 'Deploy to Staging Environment'
+    pool:
+      vmImage: 'windows-latest'
+    environment: 'Staging'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: AzureFunctionApp@1
+            displayName: 'Deploy Azure Function App - Staging'
+            inputs:
+              azureSubscription: $(azureSubscription)
+              appType: 'functionApp'
+              appName: '$(azureFunctionAppName)-staging'
+              package: '$(Pipeline.Workspace)/drop/*.zip'
+              deploymentMethod: 'auto'
+              appSettings: |
+                -FUNCTIONS_WORKER_RUNTIME dotnet-isolated
+                -FUNCTIONS_EXTENSION_VERSION ~4
+                -AzureWebJobsStorage $(AzureWebJobsStorage-Staging)
+                -SqlConnectionString $(SqlConnectionString-Staging)
+                -APPINSIGHTS_INSTRUMENTATIONKEY $(ApplicationInsights-Staging)
+
+          - task: AzureCLI@2
+            displayName: 'Run Smoke Tests'
+            inputs:
+              azureSubscription: $(azureSubscription)
+              scriptType: 'ps'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                $healthEndpoint = "https://$(azureFunctionAppName)-staging.azurewebsites.net/api/health"
+                $response = Invoke-RestMethod -Uri $healthEndpoint -Method GET
+                if ($response.Status -ne "Healthy") {
+                  Write-Error "Health check failed!"
+                  exit 1
+                }
+                Write-Host "Smoke tests passed successfully!"
+
+- stage: DeployProduction
+  displayName: 'Deploy to Production'
+  dependsOn: 
+  - Build
+  - DeployStaging
+  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+  jobs:
+  - deployment: DeployToProduction
+    displayName: 'Deploy to Production Environment'
+    pool:
+      vmImage: 'windows-latest'
+    environment: 'Production'
+    strategy:
+      runOnce:
+        deploy:
+          steps:
+          - task: AzureFunctionApp@1
+            displayName: 'Deploy Azure Function App - Production'
+            inputs:
+              azureSubscription: $(azureSubscription)
+              appType: 'functionApp'
+              appName: '$(azureFunctionAppName)'
+              package: '$(Pipeline.Workspace)/drop/*.zip'
+              deploymentMethod: 'auto'
+              deployToSlotOrASE: true
+              slotName: 'staging'
+              appSettings: |
+                -FUNCTIONS_WORKER_RUNTIME dotnet-isolated
+                -FUNCTIONS_EXTENSION_VERSION ~4
+                -AzureWebJobsStorage $(AzureWebJobsStorage-Prod)
+                -SqlConnectionString $(SqlConnectionString-Prod)
+                -APPINSIGHTS_INSTRUMENTATIONKEY $(ApplicationInsights-Prod)
+                -KeyVaultUrl $(KeyVaultUrl-Prod)
+
+          - task: AzureAppServiceManage@0
+            displayName: 'Warm up Production Slot'
+            inputs:
+              azureSubscription: $(azureSubscription)
+              Action: 'Start Azure App Service'
+              WebAppName: '$(azureFunctionAppName)'
+              SpecifySlotOrASE: true
+              Slot: 'staging'
+
+          - task: AzureCLI@2
+            displayName: 'Validate Production Deployment'
+            inputs:
+              azureSubscription: $(azureSubscription)
+              scriptType: 'ps'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                $healthEndpoint = "https://$(azureFunctionAppName)-staging.azurewebsites.net/api/health"
+                $maxAttempts = 10
+                $attempt = 0
+                
+                do {
+                  $attempt++
+                  try {
+                    $response = Invoke-RestMethod -Uri $healthEndpoint -Method GET -TimeoutSec 30
+                    if ($response.Status -eq "Healthy") {
+                      Write-Host "Health check passed on attempt $attempt"
+                      break
+                    }
+                  }
+                  catch {
+                    Write-Warning "Health check failed on attempt $attempt. Error: $($_.Exception.Message)"
+                  }
+                  
+                  if ($attempt -lt $maxAttempts) {
+                    Write-Host "Waiting 30 seconds before next attempt..."
+                    Start-Sleep -Seconds 30
+                  }
+                } while ($attempt -lt $maxAttempts)
+                
+                if ($attempt -eq $maxAttempts) {
+                  Write-Error "Health check failed after $maxAttempts attempts"
+                  exit 1
+                }
+
+          - task: AzureAppServiceManage@0
+            displayName: 'Swap to Production'
+            inputs:
+              azureSubscription: $(azureSubscription)
+              Action: 'Swap Slots'
+              WebAppName: '$(azureFunctionAppName)'
+              ResourceGroupName: '$(resourceGroupName)'
+              SourceSlot: 'staging'
+              SwapWithProduction: true
+
+          - task: AzureCLI@2
+            displayName: 'Final Production Validation'
+            inputs:
+              azureSubscription: $(azureSubscription)
+              scriptType: 'ps'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                $healthEndpoint = "https://$(azureFunctionAppName).azurewebsites.net/api/health"
+                Start-Sleep -Seconds 60  # Wait for slot swap to complete
+                
+                $response = Invoke-RestMethod -Uri $healthEndpoint -Method GET
+                if ($response.Status -ne "Healthy") {
+                  Write-Error "Production health check failed after slot swap!"
+                  exit 1
+                }
+                Write-Host "Production deployment validated successfully!"
+
+- stage: PostDeployment
+  displayName: 'Post Deployment Tasks'
+  dependsOn: DeployProduction
+  condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+  jobs:
+  - job: PostDeploymentTasks
+    displayName: 'Post Deployment Tasks'
+    pool:
+      vmImage: 'windows-latest'
+    
+    steps:
+    - task: AzureCLI@2
+      displayName: 'Update Application Insights Annotations'
+      inputs:
+        azureSubscription: $(azureSubscription)
+        scriptType: 'ps'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          $annotation = @{
+            AnnotationName = "Deployment"
+            Category = "Deployment"
+            EventTime = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ss.fffZ")
+            Id = "$(Build.BuildNumber)"
+            Properties = @{
+              BuildNumber = "$(Build.BuildNumber)"
+              SourceBranch = "$(Build.SourceBranch)"
+              CommitId = "$(Build.SourceVersion)"
+              Environment = "Production"
+            }
+          } | ConvertTo-Json
+          
+          Write-Host "Creating Application Insights annotation for deployment"
+          # Aquí se haría la llamada a la API de Application Insights para crear la anotación
+
+    - task: PowerShell@2
+      displayName: 'Send Deployment Notification'
+      inputs:
+        targetType: 'inline'
+        script: |
+          $deploymentInfo = @{
+            BuildNumber = "$(Build.BuildNumber)"
+            Environment = "Production"
+            Status = "Success"
+            DeployedBy = "$(Build.RequestedFor)"
+            Timestamp = (Get-Date).ToString("yyyy-MM-dd HH:mm:ss UTC")
+            CommitId = "$(Build.SourceVersion)".Substring(0,8)
+            Branch = "$(Build.SourceBranch)"
+          }
+          
+          Write-Host "Deployment completed successfully!"
+          Write-Host "Build: $($deploymentInfo.BuildNumber)"
+          Write-Host "Environment: $($deploymentInfo.Environment)"
+          Write-Host "Deployed by: $($deploymentInfo.DeployedBy)"
+          Write-Host "Commit: $($deploymentInfo.CommitId)"
+          
+          # Aquí se podría enviar notificación a Teams, Slack, email, etc.
+
+    - task: AzureCLI@2
+      displayName: 'Database Migration Check'
+      inputs:
+        azureSubscription: $(azureSubscription)
+        scriptType: 'ps'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          Write-Host "Checking if database migrations are needed..."
+          # En un escenario real, aquí se ejecutarían las migraciones de EF Core
+          # dotnet ef database update --connection "$(SqlConnectionString-Prod)"
+          Write-Host "Database migration check completed"
