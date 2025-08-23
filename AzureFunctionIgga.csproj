@@ -12,6 +12,44 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="controllers\configuration\**" />
+    <EmbeddedResource Remove="controllers\configuration\**" />
+    <None Remove="controllers\configuration\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Remove="controllers\security\AuthController.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="controllers\configuration\AuditController.cs" />
+    <Compile Include="controllers\configuration\CasefileController.cs" />
+    <Compile Include="controllers\configuration\CasefileStateController.cs" />
+    <Compile Include="controllers\configuration\ConfidentialDocumentController.cs" />
+    <Compile Include="controllers\configuration\ConfigSettledController.cs" />
+    <Compile Include="controllers\configuration\ConfigurationAppController.cs" />
+    <Compile Include="controllers\configuration\ConfigurationMenuController.cs" />
+    <Compile Include="controllers\configuration\ContactController.cs" />
+    <Compile Include="controllers\configuration\DocumentaryTypesController.cs" />
+    <Compile Include="controllers\configuration\DocumentController.cs" />
+    <Compile Include="controllers\configuration\FileStateController.cs" />
+    <Compile Include="controllers\configuration\FileValueController.cs" />
+    <Compile Include="controllers\configuration\FinalDispositionController.cs" />
+    <Compile Include="controllers\configuration\NotificationTransactionController.cs" />
+    <Compile Include="controllers\configuration\NotificationVariableController.cs" />
+    <Compile Include="controllers\configuration\OrganizationalTypeController.cs" />
+    <Compile Include="controllers\configuration\OrganizationalUnitController.cs" />
+    <Compile Include="controllers\configuration\SerieController.cs" />
+    <Compile Include="controllers\configuration\SettledController.cs" />
+    <Compile Include="controllers\configuration\StateTransactionController.cs" />
+    <Compile Include="controllers\configuration\StorageTypeController.cs" />
+    <Compile Include="controllers\configuration\StorageUnitController.cs" />
+    <Compile Include="controllers\configuration\SubserieController.cs" />
+    <Compile Include="controllers\configuration\WorkFlowController.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Azure.Data.Tables" Version="12.11.0" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker" Version="1.21.0" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Sdk" Version="1.16.4" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Http" Version="3.1.0" />
@@ -23,15 +61,20 @@
     <PackageReference Include="Microsoft.Azure.Functions.Worker.ApplicationInsights" Version="1.2.0" />
     <PackageReference Include="Azure.Identity" Version="1.11.4" />
     <PackageReference Include="Azure.Security.KeyVault.Secrets" Version="4.6.0" />
+    <PackageReference Include="Microsoft.Azure.WebJobs" Version="3.0.41" />
+    <PackageReference Include="Microsoft.Azure.WebJobs.Core" Version="3.0.41" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.6" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.6" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.6" />
     <PackageReference Include="AutoMapper" Version="13.0.1" />
     <PackageReference Include="FluentValidation" Version="11.9.2" />
+    <PackageReference Include="Microsoft.IdentityModel.Clients.ActiveDirectory" Version="5.3.0" />
     <PackageReference Include="Serilog" Version="4.0.0" />
     <PackageReference Include="Serilog.Extensions.Hosting" Version="8.0.0" />
     <PackageReference Include="Serilog.Sinks.ApplicationInsights" Version="4.0.0" />
-    <PackageReference Include="System.Text.Json" Version="8.0.3" />
+    <PackageReference Include="Spire.Doc" Version="13.7.14" />
+    <PackageReference Include="Spire.PDF" Version="11.7.16" />
+    <PackageReference Include="Spire.XLS" Version="15.7.8" />
   </ItemGroup>
 
   <ItemGroup>
