@@ -1,0 +1,28 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
+    //QA IGGA
+    "AzureWebJobsStorage": "DefaultEndpointsProtocol=https;AccountName=qagestiondocumental;AccountKey=FHokBddd/K8Rr2GCqBK4d9MWKpYLfeXMGii97yg0SBMxvVE1LSqDAwdORzVGXts8igrrG+vkhKL9cKkACwZGUQ==;EndpointSuffix=core.windows.net",
+    "AzureWebJobsDashboard": "DefaultEndpointsProtocol=https;AccountName=qagestiondocumental;AccountKey=FHokBddd/K8Rr2GCqBK4d9MWKpYLfeXMGii97yg0SBMxvVE1LSqDAwdORzVGXts8igrrG+vkhKL9cKkACwZGUQ==;EndpointSuffix=core.windows.net",
+    "AzureWebJobsStorageQA": "DefaultEndpointsProtocol=https;AccountName=qagestiondocumental;AccountKey=FHokBddd/K8Rr2GCqBK4d9MWKpYLfeXMGii97yg0SBMxvVE1LSqDAwdORzVGXts8igrrG+vkhKL9cKkACwZGUQ==;EndpointSuffix=core.windows.net",
+    "AzureWebJobsDashboardQA": "DefaultEndpointsProtocol=https;AccountName=qagestiondocumental;AccountKey=FHokBddd/K8Rr2GCqBK4d9MWKpYLfeXMGii97yg0SBMxvVE1LSqDAwdORzVGXts8igrrG+vkhKL9cKkACwZGUQ==;EndpointSuffix=core.windows.net",
+    "AzureAuthorizationEndpoint": "https://login.microsoftonline.com/igga.com.co/oauth2/authorize",
+    "ResourceUri": "https://graph.microsoft.com",
+    "ResourceUriAD": "https://graph.windows.net",
+    "UserAdmin": "notificacionescad@igga.com.co",
+    "PassAdmin": "Info3031*",
+    "ClientId": "70ae4588-6075-4527-a112-9979ff332927",
+    "Production": false,
+    "ModNotifications": "https://pdn-notifications-mgt-svc.azurewebsites.net/",
+    "ID_PROJECT_NOTIFICATION": "4",
+    "DOMAIN_SENDER": "Office365",
+    "PASS_SENDER": "Mufitudu123",
+    "EMAIL_SENDER": "ysanchez@conocimientocorporativo.com"
+  },
+
+  "Host": {
+    "CORS": "*"
+  }
+}
